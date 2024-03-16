@@ -1,0 +1,116 @@
+import numpy as np
+from keras.datasets import mnist
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import Dropout
+from keras.layers import Flatten
+from tensorflow.keras.layers import Conv2D, MaxPooling2D,BatchNormalization
+from tensorflow.keras.utils import to_categorical
+from keras import backend as K
+import matplotlib.pyplot as plt
+
+K.set_image_data_format('channels_last')
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
+x_train = x_train.reshape(x_train.shape[0], 28, 28, 1).astype('float32')
+x_test = x_test.reshape(x_test.shape[0], 28, 28, 1).astype('float32')
+
+X_train = x_train / 255
+X_test = x_test / 255
+#y_train = to_categorical(y_train)
+#y_test = to_categorical(y_test)
+#num_classes = y_test.shape[1]
+
+yes="Yes"
+no="No"
+
+y_train_last_digit_is_seven = np.array([yes if str(label)[-1] == '7' else no for label in y_train])
+y_test_last_digit_is_seven = np.array([yes if str(label)[-1] == '7' else no for label in y_test])
+
+'''
+def baseline_model():
+    model = Sequential()
+    model.add(Conv2D(32, (5, 5), input_shape=(28, 28, 1), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(32, (5, 5), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Dropout(0.2))
+    model.add(Flatten())
+    model.add(Dense(128, activation='relu'))
+    model.add(Dense(1, activation='sigmoid'))
+   # model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    return model
+'''
+
+'''
+Добавление сверточных слоев: Увеличим количество сверточных слоев и нейронов в них для извлечения более высокоуровневых признаков.
+
+Увеличение количества плотных слоев: Добавим дополнительные плотные слои для более глубокого обучения.
+
+Добавление слоев Batch Normalization и Dropout: Эти слои помогут улучшить стабильность и предотвратить переобучение модели
+
+'''
+def improved_model():
+    model = Sequential()
+    
+    # Первый сверточный слой с 32 фильтрами размером 3x3 и функцией активации ReLU
+    model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1)))
+    # Добавление слоя Batch Normalization после сверточного слоя для стабилизации обучения
+    model.add(BatchNormalization())
+    
+    # Второй сверточный слой с 64 фильтрами размером 3x3 и функцией активации ReLU
+    model.add(Conv2D(64, (3, 3), activation='relu'))
+    # Пуллинг слой для уменьшения размерности карт признаков
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    # Dropout слой для предотвращения переобучения
+    model.add(Dropout(0.25))
+
+    # Третий сверточный слой с 128 фильтрами размером 3x3 и функцией активации ReLU
+    model.add(Conv2D(128, (3, 3), activation='relu'))
+    # Добавление слоя Batch Normalization после сверточного слоя для стабилизации обучения
+    model.add(BatchNormalization())
+    
+    # Четвёртый сверточный слой с 256 фильтрами размером 3x3 и функцией активации ReLU
+    model.add(Conv2D(256, (3, 3), activation='relu'))
+    # Пуллинг слой для уменьшения размерности карт признаков
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    # Dropout слой для предотвращения переобучения
+    model.add(Dropout(0.25))
+
+    # Выравнивание карт признаков перед подачей на плотный слой
+    model.add(Flatten())
+    
+    # Первый плотный слой с 512 нейронами и функцией активации ReLU
+    model.add(Dense(512, activation='relu'))
+    # Добавление слоя Batch Normalization после плотного слоя для стабилизации обучения
+    model.add(BatchNormalization())
+    # Dropout слой для предотвращения переобучения
+    model.add(Dropout(0.5))
+    
+    # Второй плотный слой с 256 нейронами и функцией активации ReLU
+    model.add(Dense(256, activation='relu'))
+    # Добавление слоя Batch Normalization после плотного слоя для стабилизации обучения
+    model.add(BatchNormalization())
+    
+    # Выходной слой с одним нейроном и функцией активации sigmoid для бинарной классификации
+    model.add(Dense(1, activation='sigmoid'))
+
+    # Компиляция модели с использованием бинарной кросс-энтропии в качестве функции потерь и оптимизатора Adam
+    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    return model
+
+
+model = improved_model()
+model.fit(x_train, (y_train_last_digit_is_seven == yes).astype(int), batch_size=32, epochs=10, validation_split=0.2)
+count_numb = 20
+for n in range(count_numb):
+    x = np.expand_dims(x_test[n], axis=0)
+    res = model.predict(x)
+    print(res)
+    predicted_label = yes if res >= 0.5 else no
+    print('Is the last digit 7? ' + str(predicted_label))
+    plt.imshow(x_test[n], cmap=plt.cm.binary)
+    plt.show()
+
+scores = model.evaluate(x_test, y_test, verbose=0)
+print("CNN Error: %.2f%%" % (100 - scores[1] * 100))# процент точности модели
