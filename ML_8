@@ -69,7 +69,7 @@ X_train, X_test, y_train, y_test = train_test_split(X_data, y_data, test_size=0.
 '''
 
 # Обучение модели на обучающем наборе данных
-analyzer = SpamAnalyzer(alpha=0.5)  # Устанавливаем гиперпараметр alpha
+analyzer = SpamAnalyzer(alpha=0.1)  # Устанавливаем гиперпараметр alpha
 analyzer.train(X_train, y_train)
 
 # Оценка точности модели на тестовом наборе данных
